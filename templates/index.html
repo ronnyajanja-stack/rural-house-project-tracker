@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gedo House Building Tracker</title>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --primary: #2563eb;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --border: #e2e8f0;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 24px 16px; margin: 0; }
+        .container { max-width: 960px; margin: auto; }
+        .header { margin-bottom: 20px; }
+        .header h1 { margin: 0 0 4px 0; font-size: 24px; }
+        .header p { margin: 0; color: var(--muted); font-size: 14px; }
+        
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 14px; margin-bottom: 24px; }
+        .metric-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+        .metric-card span { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+        .metric-card h3 { margin: 6px 0 0 0; font-size: 19px; }
+        
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        h2 { font-size: 16px; margin-top: 0; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+        th { color: var(--muted); font-weight: 600; font-size: 13px; }
+        
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) auto; gap: 12px; align-items: end; }
+        label { font-size: 12px; font-weight: 600; color: var(--muted); display: block; margin-bottom: 4px; }
+        input, select, button { padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; width: 100%; box-sizing: border-box; }
+        button { background: var(--primary); color: #fff; border: none; font-weight: 600; cursor: pointer; height: 38px; }
+        button:hover { background: #1d4ed8; }
+        
+        .badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+        .badge-inflow { background: #dcfce7; color: var(--success); }
+        .badge-expense { background: #fee2e2; color: var(--danger); }
+        .status-paid { color: var(--success); font-weight: 600; }
+        .status-pending { color: #d97706; font-weight: 600; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>Rural House Project Tracker</h1>
+        <p>Real-time budget, materials procurement, and cash flow</p>
+    </div>
+
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <span>Total Project Cost</span>
+            <h3>KES {{ "{:,.2f}".format(total_budget) }}</h3>
+        </div>
+        <div class="metric-card">
+            <span>Expected Cash (Dec)</span>
+            <h3 style="color: var(--success);">KES {{ "{:,.2f}".format(expected_cash) }}</h3>
+        </div>
+        <div class="metric-card">
+            <span>Deficit (By Dec)</span>
+            <h3 style="color: var(--danger);">KES {{ "{:,.2f}".format(projected_deficit) }}</h3>
+        </div>
+        <div class="metric-card">
+            <span>Total Spent</span>
+            <h3 style="color: #475569;">KES {{ "{:,.2f}".format(total_spent) }}</h3>
+        </div>
+        <div class="metric-card">
+            <span>Active Balance</span>
+            <h3 style="color: var(--primary);">KES {{ "{:,.2f}".format(cash_in_hand) }}</h3>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Record Cash Inflow / Expense</h2>
+        <form action="/add_transaction" method="POST">
+            <div class="form-grid">
+                <div>
+                    <label>Action Type</label>
+                    <select name="entry_type" id="entry_type" onchange="toggleInputs()" required>
+                        <option value="EXPENSE">Expense (Pay Material/Labour)</option>
+                        <option value="INFLOW">Cash Inflow (Savings/Top-up)</option>
+                    </select>
+                </div>
+                <div id="expense_item_div">
+                    <label>Budget Item</label>
+                    <select name="expense_item" id="expense_item">
+                        {% for item in items %}
+                            <option value="{{ item['item_name'] }}">{{ item['item_name'] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div id="inflow_source_div" style="display: none;">
+                    <label>Source / Description</label>
+                    <input type="text" name="inflow_source" placeholder="e.g., Side Hustle / Bonus">
+                </div>
+                <div>
+                    <label>Amount (KES)</label>
+                    <input type="number" step="0.01" min="1" name="amount" placeholder="KES" required>
+                </div>
+                <div>
+                    <label>Notes (Optional)</label>
+                    <input type="text" name="notes" placeholder="Receipt / Vendor Details">
+                </div>
+                <div>
+                    <button type="submit">Log Entry</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Requirements Breakdown & Progress</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Category</th>
+                    <th>Budgeted</th>
+                    <th>Actual Paid</th>
+                    <th>Remaining</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td><strong>{{ item['item_name'] }}</strong></td>
+                    <td>{{ item['category'] }}</td>
+                    <td>KES {{ "{:,.2f}".format(item['budgeted_amount']) }}</td>
+                    <td>KES {{ "{:,.2f}".format(item['total_paid']) }}</td>
+                    <td>KES {{ "{:,.2f}".format(item['balance_left']) }}</td>
+                    <td>
+                        {% if item['balance_left'] <= 0 %}
+                            <span class="status-paid">Paid</span>
+                        {% elif item['total_paid'] > 0 %}
+                            <span class="status-pending">Partial</span>
+                        {% else %}
+                            <span style="color: var(--muted);">Unpaid</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Transaction Ledger</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date & Time</th>
+                    <th>Type</th>
+                    <th>Item / Description</th>
+                    <th>Amount</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tx in history %}
+                <tr>
+                    <td style="color: var(--muted); font-size: 13px;">{{ tx['timestamp'] }}</td>
+                    <td>
+                        <span class="badge badge-{{ tx['entry_type'].lower() }}">{{ tx['entry_type'] }}</span>
+                    </td>
+                    <td>{{ tx['category_or_item'] }}</td>
+                    <td><strong>KES {{ "{:,.2f}".format(tx['amount']) }}</strong></td>
+                    <td style="color: var(--muted);">{{ tx['notes'] or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function toggleInputs() {
+    const type = document.getElementById('entry_type').value;
+    const expenseDiv = document.getElementById('expense_item_div');
+    const inflowDiv = document.getElementById('inflow_source_div');
+    if (type === 'EXPENSE') {
+        expenseDiv.style.display = 'block';
+        inflowDiv.style.display = 'none';
+    } else {
+        expenseDiv.style.display = 'none';
+        inflowDiv.style.display = 'block';
+    }
+}
+</script>
+</body>
+</html>
