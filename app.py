@@ -4,7 +4,10 @@ import sqlite3
 from flask import Flask, redirect, render_template, request, url_for
 
 app = Flask(__name__)
-DB_NAME = "gedo_house.db"
+
+# Ensure the database file path resolves to the project folder on Render
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_NAME = os.path.join(BASE_DIR, "gedo_house.db")
 
 
 def get_db():
@@ -143,6 +146,10 @@ def init_db():
         conn.commit()
 
 
+# Run initialization when module loads (critical for Gunicorn on Render)
+init_db()
+
+
 @app.route("/")
 def index():
     with get_db() as conn:
@@ -229,5 +236,4 @@ def add_transaction():
 
 
 if __name__ == "__main__":
-    init_db()
     app.run(debug=True, port=5000)
