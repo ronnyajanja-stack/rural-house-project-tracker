@@ -87,7 +87,7 @@ def init_db():
                 ("Chicken Wire", "Masonry", 1000.0),
                 ("Window Labour", "Labour", 500.0),
                 ("Water Fetching", "Labour", 300.0),
-                ("Window Pati (Putty)", "Finishes", 200.0),
+                ("Window体制 Pati (Putty)", "Finishes", 200.0),
                 ("Miscellaneous", "Contingency", 500.0),
             ]
             conn.executemany(
@@ -203,6 +203,33 @@ def index():
         items=items,
         history=history,
     )
+
+
+@app.route("/add_item", methods=["POST"])
+def add_item():
+    """Endpoint to add new requirements and dynamically update total budget."""
+    item_name = request.form.get("item_name", "").strip()
+    category = request.form.get("category", "Masonry").strip()
+    try:
+        budgeted_amount = float(request.form.get("budgeted_amount", 0.0))
+    except (ValueError, TypeError):
+        budgeted_amount = 0.0
+
+    if item_name and budgeted_amount > 0:
+        with get_db() as conn:
+            conn.execute(
+                """
+                INSERT INTO budget_items (item_name, category, budgeted_amount)
+                VALUES (?, ?, ?)
+                ON CONFLICT(item_name) DO UPDATE SET 
+                    category=excluded.category,
+                    budgeted_amount=excluded.budgeted_amount
+                """,
+                (item_name, category, budgeted_amount),
+            )
+            conn.commit()
+
+    return redirect(url_for("index"))
 
 
 @app.route("/add_transaction", methods=["POST"])

@@ -12,6 +12,7 @@
             --muted: #64748b;
             --primary: #2563eb;
             --success: #16a34a;
+            --warning: #d97706;
             --danger: #dc2626;
             --border: #e2e8f0;
         }
@@ -41,8 +42,9 @@
         .badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
         .badge-inflow { background: #dcfce7; color: var(--success); }
         .badge-expense { background: #fee2e2; color: var(--danger); }
+        .badge-withdrawal { background: #fef3c7; color: var(--warning); }
         .status-paid { color: var(--success); font-weight: 600; }
-        .status-pending { color: #d97706; font-weight: 600; }
+        .status-pending { color: var(--warning); font-weight: 600; }
     </style>
 </head>
 <body>
@@ -52,6 +54,7 @@
         <p>Real-time budget, materials procurement, and cash flow</p>
     </div>
 
+    <!-- Dashboard Top-Level Metrics -->
     <div class="metrics-grid">
         <div class="metric-card">
             <span>Total Project Cost</span>
@@ -75,8 +78,40 @@
         </div>
     </div>
 
+    <!-- Add New Requirement / Budget Item -->
     <div class="card">
-        <h2>Record Cash Inflow / Expense</h2>
+        <h2>Add Additional Requirement / Item</h2>
+        <form action="/add_item" method="POST">
+            <div class="form-grid">
+                <div>
+                    <label>Item Name / Description</label>
+                    <input type="text" name="item_name" placeholder="e.g., Timber, Sand, Plumbing" required>
+                </div>
+                <div>
+                    <label>Category</label>
+                    <select name="category" required>
+                        <option value="Masonry">Masonry</option>
+                        <option value="Labour">Labour</option>
+                        <option value="Finishes">Finishes</option>
+                        <option value="Roofing">Roofing</option>
+                        <option value="Contingency">Contingency</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Budgeted Amount (KES)</label>
+                    <input type="number" step="0.01" min="1" name="budgeted_amount" placeholder="KES" required>
+                </div>
+                <div>
+                    <button type="submit">+ Add Item</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Record Cash Inflow / Expense / Withdrawal -->
+    <div class="card">
+        <h2>Record Cash Inflow / Expense / Withdrawal</h2>
         <form action="/add_transaction" method="POST">
             <div class="form-grid">
                 <div>
@@ -84,6 +119,7 @@
                     <select name="entry_type" id="entry_type" onchange="toggleInputs()" required>
                         <option value="EXPENSE">Expense (Pay Material/Labour)</option>
                         <option value="INFLOW">Cash Inflow (Savings/Top-up)</option>
+                        <option value="WITHDRAWAL">Personal Withdrawal</option>
                     </select>
                 </div>
                 <div id="expense_item_div">
@@ -96,7 +132,11 @@
                 </div>
                 <div id="inflow_source_div" style="display: none;">
                     <label>Source / Description</label>
-                    <input type="text" name="inflow_source" placeholder="e.g., Side Hustle / Bonus">
+                    <input type="text" name="inflow_source" placeholder="e.g., Side Hustle / Salary">
+                </div>
+                <div id="withdrawal_reason_div" style="display: none;">
+                    <label>Withdrawal Purpose</label>
+                    <input type="text" name="withdrawal_reason" placeholder="e.g., Emergency / Personal Use">
                 </div>
                 <div>
                     <label>Amount (KES)</label>
@@ -113,6 +153,7 @@
         </form>
     </div>
 
+    <!-- Requirements Breakdown & Progress Table -->
     <div class="card">
         <h2>Requirements Breakdown & Progress</h2>
         <table>
@@ -135,7 +176,7 @@
                     <td>KES {{ "{:,.2f}".format(item['total_paid']) }}</td>
                     <td>KES {{ "{:,.2f}".format(item['balance_left']) }}</td>
                     <td>
-                        {% if item['balance_left'] <= 0 %}
+                        {% if item['balance_left'] <= 0 and item['budgeted_amount'] > 0 %}
                             <span class="status-paid">Paid</span>
                         {% elif item['total_paid'] > 0 %}
                             <span class="status-pending">Partial</span>
@@ -149,6 +190,7 @@
         </table>
     </div>
 
+    <!-- Transaction Ledger History -->
     <div class="card">
         <h2>Transaction Ledger</h2>
         <table>
@@ -183,12 +225,20 @@ function toggleInputs() {
     const type = document.getElementById('entry_type').value;
     const expenseDiv = document.getElementById('expense_item_div');
     const inflowDiv = document.getElementById('inflow_source_div');
+    const withdrawalDiv = document.getElementById('withdrawal_reason_div');
+
     if (type === 'EXPENSE') {
         expenseDiv.style.display = 'block';
         inflowDiv.style.display = 'none';
-    } else {
+        withdrawalDiv.style.display = 'none';
+    } else if (type === 'INFLOW') {
         expenseDiv.style.display = 'none';
         inflowDiv.style.display = 'block';
+        withdrawalDiv.style.display = 'none';
+    } else if (type === 'WITHDRAWAL') {
+        expenseDiv.style.display = 'none';
+        inflowDiv.style.display = 'none';
+        withdrawalDiv.style.display = 'block';
     }
 }
 </script>
