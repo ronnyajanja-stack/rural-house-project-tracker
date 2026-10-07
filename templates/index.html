@@ -22,7 +22,7 @@
         .header h1 { margin: 0 0 4px 0; font-size: 24px; }
         .header p { margin: 0; color: var(--muted); font-size: 14px; }
         
-        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 14px; margin-bottom: 24px; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
         .metric-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
         .metric-card span { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
         .metric-card h3 { margin: 6px 0 0 0; font-size: 19px; }
@@ -41,8 +41,7 @@
         
         .badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
         .badge-inflow { background: #dcfce7; color: var(--success); }
-        .badge-expense { background: #fee2e2; color: var(--danger); }
-        .badge-withdrawal { background: #fef3c7; color: var(--warning); }
+        .badge-outflow, .badge-expense { background: #fee2e2; color: var(--danger); }
         .status-paid { color: var(--success); font-weight: 600; }
         .status-pending { color: var(--warning); font-weight: 600; }
     </style>
@@ -57,24 +56,20 @@
     <!-- Dashboard Top-Level Metrics -->
     <div class="metrics-grid">
         <div class="metric-card">
+            <span>Savings</span>
+            <h3 style="color: var(--primary);">KES {{ "{:,.2f}".format(savings) }}</h3>
+        </div>
+        <div class="metric-card">
+            <span>Cash Outflow</span>
+            <h3 style="color: #475569;">KES {{ "{:,.2f}".format(cash_outflow) }}</h3>
+        </div>
+        <div class="metric-card">
             <span>Total Project Cost</span>
-            <h3>KES {{ "{:,.2f}".format(total_budget) }}</h3>
+            <h3>KES {{ "{:,.2f}".format(total_project_cost) }}</h3>
         </div>
         <div class="metric-card">
-            <span>Expected Cash (Dec)</span>
-            <h3 style="color: var(--success);">KES {{ "{:,.2f}".format(expected_cash) }}</h3>
-        </div>
-        <div class="metric-card">
-            <span>Deficit (By Dec)</span>
-            <h3 style="color: var(--danger);">KES {{ "{:,.2f}".format(projected_deficit) }}</h3>
-        </div>
-        <div class="metric-card">
-            <span>Total Spent</span>
-            <h3 style="color: #475569;">KES {{ "{:,.2f}".format(total_spent) }}</h3>
-        </div>
-        <div class="metric-card">
-            <span>Active Balance</span>
-            <h3 style="color: var(--primary);">KES {{ "{:,.2f}".format(cash_in_hand) }}</h3>
+            <span>Deficit</span>
+            <h3 style="color: {{ 'var(--danger)' if deficit > 0 else 'var(--success)' }};">KES {{ "{:,.2f}".format(deficit) }}</h3>
         </div>
     </div>
 
@@ -109,34 +104,30 @@
         </form>
     </div>
 
-    <!-- Record Cash Inflow / Expense / Withdrawal -->
+    <!-- Record Cash Inflow / Cash Outflow -->
     <div class="card">
-        <h2>Record Cash Inflow / Expense / Withdrawal</h2>
+        <h2>Record Cash Inflow / Outflow</h2>
         <form action="/add_transaction" method="POST">
             <div class="form-grid">
                 <div>
                     <label>Action Type</label>
                     <select name="entry_type" id="entry_type" onchange="toggleInputs()" required>
-                        <option value="EXPENSE">Expense (Pay Material/Labour)</option>
-                        <option value="INFLOW">Cash Inflow (Savings/Top-up)</option>
-                        <option value="WITHDRAWAL">Personal Withdrawal</option>
+                        <option value="OUTFLOW">Cash Outflow (Expense)</option>
+                        <option value="INFLOW">Cash Inflow (Savings Top-up)</option>
                     </select>
                 </div>
-                <div id="expense_item_div">
-                    <label>Budget Item</label>
+                <div id="outflow_expense_div">
+                    <label>Expense Type</label>
                     <select name="expense_item" id="expense_item">
+                        <option value="Direct / General Outflow">Direct / General Outflow</option>
                         {% for item in items %}
-                            <option value="{{ item['item_name'] }}">{{ item['item_name'] }}</option>
+                            <option value="{{ item['item_name'] }}">{{ item['item_name'] }} ({{ item['category'] }})</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div id="inflow_source_div" style="display: none;">
                     <label>Source / Description</label>
-                    <input type="text" name="inflow_source" placeholder="e.g., Side Hustle / Salary">
-                </div>
-                <div id="withdrawal_reason_div" style="display: none;">
-                    <label>Withdrawal Purpose</label>
-                    <input type="text" name="withdrawal_reason" placeholder="e.g., Emergency / Personal Use">
+                    <input type="text" name="inflow_source" placeholder="e.g., Salary, Deposit">
                 </div>
                 <div>
                     <label>Amount (KES)</label>
@@ -198,7 +189,7 @@
                 <tr>
                     <th>Date & Time</th>
                     <th>Type</th>
-                    <th>Item / Description</th>
+                    <th>Expense Type / Source</th>
                     <th>Amount</th>
                     <th>Notes</th>
                 </tr>
@@ -223,24 +214,4 @@
 <script>
 function toggleInputs() {
     const type = document.getElementById('entry_type').value;
-    const expenseDiv = document.getElementById('expense_item_div');
-    const inflowDiv = document.getElementById('inflow_source_div');
-    const withdrawalDiv = document.getElementById('withdrawal_reason_div');
-
-    if (type === 'EXPENSE') {
-        expenseDiv.style.display = 'block';
-        inflowDiv.style.display = 'none';
-        withdrawalDiv.style.display = 'none';
-    } else if (type === 'INFLOW') {
-        expenseDiv.style.display = 'none';
-        inflowDiv.style.display = 'block';
-        withdrawalDiv.style.display = 'none';
-    } else if (type === 'WITHDRAWAL') {
-        expenseDiv.style.display = 'none';
-        inflowDiv.style.display = 'none';
-        withdrawalDiv.style.display = 'block';
-    }
-}
-</script>
-</body>
-</html>
+    const outflowDiv = document.getElementById('outflow_expense_div
